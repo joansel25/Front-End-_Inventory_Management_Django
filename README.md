@@ -1,1 +1,1 @@
-FrontEnd Inventory Django
+Front- End Inventory Management Django
