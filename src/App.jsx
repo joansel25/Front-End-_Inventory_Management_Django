@@ -3,6 +3,7 @@ import Login from "./Login";
 import AdminDashboard from "./AdminDashboard";
 import EmpleadoDashboard from "./EmpleadoDashboard";
 import PrivateRoute from "./PrivateRoute";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
   return (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -15,17 +16,14 @@ function Login() {
         password,
       });
 
-      // Guardar tokens y rol en localStorage
       localStorage.setItem("access", response.data.access);
       localStorage.setItem("refresh", response.data.refresh);
 
-      const rol = response.data.user?.rol?.trim().toLowerCase(); // Normalizamos
-
+      const rol = response.data.user?.rol?.trim().toLowerCase();
       localStorage.setItem("rol", rol);
 
       alert("✅ Inicio de sesión exitoso");
 
-      // Redirigir según el rol
       if (rol === "administrador") {
         navigate("/admin");
       } else if (rol === "empleado") {
@@ -33,7 +31,6 @@ function Login() {
       } else {
         alert("❌ Rol no reconocido. Consulta con el administrador.");
       }
-
     } catch (error) {
       console.error("Error de login:", error.response?.data);
       alert("❌ Credenciales incorrectas o error al conectar con el servidor.");
@@ -41,29 +38,66 @@ function Login() {
   };
 
   return (
-    <div style={{ width: "300px", margin: "50px auto" }}>
-      <h2>Iniciar Sesión</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <input
-            type="text"
-            placeholder="Nombre de usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+    <div
+      className="d-flex justify-content-center align-items-center vh-100"
+      style={{
+        background: "linear-gradient(135deg, #d0f0c0, #b2dfdb)",
+      }}
+    >
+      <div className="card shadow-lg p-4 rounded-4" style={{ width: "380px" }}>
+        <div className="text-center mb-4">
+          <h2 className="fw-bold text-success">💊 Farmacia Salud+</h2>
+          <p className="text-muted">Sistema de Gestión de Inventario</p>
         </div>
-        <div>
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label className="form-label fw-semibold text-success">Usuario</label>
+            <input
+              type="text"
+              className="form-control shadow-sm"
+              placeholder="Ingrese su usuario"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold text-success">Contraseña</label>
+            <input
+              type="password"
+              className="form-control shadow-sm"
+              placeholder="Ingrese su contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-success w-100 fw-bold shadow-sm mt-2"
+          >
+            Ingresar
+          </button>
+        </form>
+
+        {/* Enlace de registro */}
+        <div className="text-center mt-3">
+          <p className="text-muted mb-1">¿No tienes cuenta?</p>
+          <Link
+            to="/register"
+            className="fw-bold text-success text-decoration-none"
+          >
+            Regístrate aquí
+          </Link>
         </div>
-        <button type="submit">Ingresar</button>
-      </form>
+
+        <div className="text-center mt-4">
+          <small className="text-muted">© 2025 Farmacia Salud+</small>
+        </div>
+      </div>
     </div>
   );
 }
