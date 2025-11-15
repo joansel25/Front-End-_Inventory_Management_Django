@@ -1,239 +1,262 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { Package, PlusCircle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.min.css";
+import { Package, Plus, Edit, Trash2, ArrowLeft, Download } from "lucide-react";
+import api from "../services/api";
 
 export default function Productos() {
+  const navigate = useNavigate();
   const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [nuevoProducto, setNuevoProducto] = useState({
+  const [productoEdit, setProductoEdit] = useState(null);
+  const [formData, setFormData] = useState({
     nombre: "",
     precio: "",
     stock: "",
     id_categoria: "",
-    id_proveedor: "",
+    id_proveedor: ""
   });
 
-  const navigate = useNavigate();
-
-  // Obtener productos desde la API
   useEffect(() => {
-    const fetchProductos = async () => {
-      try {
-        const token = localStorage.getItem("access");
-        const response = await axios.get("http://127.0.0.1:8000/api/productos/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setProductos(response.data);
-      } catch (error) {
-        console.error("Error al obtener productos:", error);
-      }
-    };
-    fetchProductos();
+    cargarDatos();
   }, []);
 
-  // Crear nuevo producto
-  const handleAddProduct = async (e) => {
+  const cargarDatos = async () => {
+    try {
+      const [prodRes, catRes, provRes] = await Promise.all([
+        api.get("/farmacia/productos/"),
+        api.get("/farmacia/categorias/"),
+        api.get("/farmacia/proveedores/")
+      ]);
+      
+      setProductos(prodRes.data);
+      setCategorias(catRes.data);
+      setProveedores(provRes.data);
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+      alert("Error al cargar los datos");
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("access");
-      await axios.post("http://127.0.0.1:8000/api/productos/", nuevoProducto, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      alert("✅ Producto agregado correctamente");
+      if (productoEdit) {
+        await api.patch(`/farmacia/productos/${productoEdit.id}/`, formData);
+        alert("✅ Producto actualizado");
+      } else {
+        await api.post("/farmacia/productos/", formData);
+        alert("✅ Producto creado");
+      }
       setShowModal(false);
-      setNuevoProducto({
-        nombre: "",
-        precio: "",
-        stock: "",
-        id_categoria: "",
-        id_proveedor: "",
-      });
-      window.location.reload();
+      setProductoEdit(null);
+      setFormData({ nombre: "", precio: "", stock: "", id_categoria: "", id_proveedor: "" });
+      cargarDatos();
     } catch (error) {
-      console.error("Error al agregar producto:", error);
-      alert("❌ No se pudo agregar el producto.");
+      console.error(" ❌ Error al guardar producto:", error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("¿Estás seguro de eliminar este producto?")) {
+      try {
+        await api.delete(`/farmacia/productos/${id}/`);
+        alert("✅ Producto eliminado");
+        cargarDatos();
+      } catch (error) {
+        console.error(" ❌ Error al eliminar producto:", error);
+      }
+    }
+  };
+
+  const descargarPDF = async () => {
+    try {
+      const response = await api.get("/farmacia/productos/all_pdf/", {
+        responseType: "blob"
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "productos.pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error al descargar PDF:", error);
+      
     }
   };
 
   return (
     <div className="container py-5">
-      {/* Botón volver */}
-      <div className="mb-3">
-        <button
-          className="btn btn-outline-success d-flex align-items-center"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="me-2" size={18} />
-          Volver
-        </button>
-      </div>
-
-      {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-success d-flex align-items-center">
-          <Package className="me-2" size={30} />
-          Gestión de Productos
-        </h2>
-        <button
-          className="btn btn-success d-flex align-items-center"
-          onClick={() => setShowModal(true)}
-        >
-          <PlusCircle className="me-2" size={18} />
-          Agregar Producto
+        <button onClick={() => navigate(-1)} className="btn btn-outline-success">
+          <ArrowLeft size={18} /> Volver
         </button>
-      </div>
-
-      <p className="text-muted mb-4">
-        Desde aquí puedes visualizar, agregar, editar y eliminar los productos del inventario.
-      </p>
-
-      {/* Tabla de productos */}
-      <div className="card shadow-sm border-0">
-        <div className="card-body">
-          <table className="table table-hover align-middle">
-            <thead className="table-success">
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Categoría</th>
-                <th>Proveedor</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th>Valor Total</th>
-                <th className="text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productos.length > 0 ? (
-                productos.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{p.nombre}</td>
-                    <td>{p.id_categoria?.nombre || "Sin categoría"}</td>
-                    <td>{p.id_proveedor?.nombre || "Sin proveedor"}</td>
-                    <td>${parseFloat(p.precio).toFixed(2)}</td>
-                    <td>{p.stock}</td>
-                    <td>${(p.precio * p.stock).toFixed(2)}</td>
-                    <td className="text-center">
-                      <button className="btn btn-outline-primary btn-sm me-2">
-                        Editar
-                      </button>
-                      <button className="btn btn-outline-danger btn-sm">
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="text-center text-muted py-4">
-                    No hay productos registrados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="d-flex gap-2">
+          <button onClick={descargarPDF} className="btn btn-outline-success">
+            <Download size={18} /> PDF
+          </button>
+          <button onClick={() => setShowModal(true)} className="btn btn-success">
+            <Plus size={18} /> Nuevo Producto
+          </button>
         </div>
       </div>
 
-      {/* Modal para agregar producto */}
+      <div className="card shadow-lg border-0 rounded-4">
+        <div className="card-header bg-success text-white py-3">
+          <h4 className="mb-0 d-flex align-items-center">
+            <Package className="me-2" /> Gestión de Productos
+          </h4>
+        </div>
+        <div className="card-body">
+          <div className="table-responsive">
+            <table className="table table-hover">
+              <thead className="table-success">
+                <tr>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Valor Total</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productos.map((p) => (
+                  <tr key={p.id}>
+                    <td className="fw-bold">{p.nombre}</td>
+                    <td>{p.id_categoria?.nombre}</td>
+                    <td>${parseFloat(p.precio).toFixed(2)}</td>
+                    <td>
+                      <span className={p.stock < 10 ? "text-danger fw-bold" : ""}>
+                        {p.stock}
+                      </span>
+                    </td>
+                    <td>${(p.precio * p.stock).toFixed(2)}</td>
+                    <td>
+                      {p.low_stock ? (
+                        <span className="badge bg-danger">Stock Bajo</span>
+                      ) : (
+                        <span className="badge bg-success">Normal</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <button 
+                          onClick={() => {
+                            setProductoEdit(p);
+                            setFormData({
+                              nombre: p.nombre,
+                              precio: p.precio,
+                              stock: p.stock,
+                              id_categoria: p.id_categoria?.id,
+                              id_proveedor: p.id_proveedor?.id
+                            });
+                            setShowModal(true);
+                          }}
+                          className="btn btn-outline-primary btn-sm"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(p.id)}
+                          className="btn btn-outline-danger btn-sm"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal para crear/editar producto */}
       {showModal && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog">
-            <div className="modal-content border-0 shadow-lg">
+        <div className="modal fade show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
               <div className="modal-header bg-success text-white">
-                <h5 className="modal-title">Agregar Nuevo Producto</h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowModal(false)}
-                ></button>
+                <h5 className="modal-title">
+                  {productoEdit ? 'Editar Producto' : 'Nuevo Producto'}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" 
+                  onClick={() => {
+                    setShowModal(false);
+                    setProductoEdit(null);
+                    setFormData({ nombre: "", precio: "", stock: "", id_categoria: "", id_proveedor: "" });
+                  }}></button>
               </div>
               <div className="modal-body">
-                <form onSubmit={handleAddProduct}>
+                <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label className="form-label">Nombre del producto</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={nuevoProducto.nombre}
-                      onChange={(e) =>
-                        setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })
-                      }
-                      required
-                    />
+                    <label className="form-label">Nombre del Producto</label>
+                    <input type="text" className="form-control" 
+                      value={formData.nombre}
+                      onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                      required />
                   </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Precio</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-control"
-                      value={nuevoProducto.precio}
-                      onChange={(e) =>
-                        setNuevoProducto({ ...nuevoProducto, precio: e.target.value })
-                      }
-                      required
-                    />
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Precio</label>
+                        <input type="number" step="0.01" className="form-control"
+                          value={formData.precio}
+                          onChange={(e) => setFormData({...formData, precio: e.target.value})}
+                          required />
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <label className="form-label">Stock</label>
+                        <input type="number" className="form-control"
+                          value={formData.stock}
+                          onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                          required />
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="mb-3">
-                    <label className="form-label">Stock</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={nuevoProducto.stock}
-                      onChange={(e) =>
-                        setNuevoProducto({ ...nuevoProducto, stock: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-
                   <div className="mb-3">
                     <label className="form-label">Categoría</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={nuevoProducto.id_categoria}
-                      onChange={(e) =>
-                        setNuevoProducto({ ...nuevoProducto, id_categoria: e.target.value })
-                      }
-                      placeholder="ID o nombre de la categoría"
-                      required
-                    />
+                    <select className="form-select"
+                      value={formData.id_categoria}
+                      onChange={(e) => setFormData({...formData, id_categoria: e.target.value})}
+                      required>
+                      <option value="">Seleccionar categoría</option>
+                      {categorias.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                      ))}
+                    </select>
                   </div>
-
                   <div className="mb-3">
                     <label className="form-label">Proveedor</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={nuevoProducto.id_proveedor}
-                      onChange={(e) =>
-                        setNuevoProducto({ ...nuevoProducto, id_proveedor: e.target.value })
-                      }
-                      placeholder="ID o nombre del proveedor"
-                      required
-                    />
+                    <select className="form-select"
+                      value={formData.id_proveedor}
+                      onChange={(e) => setFormData({...formData, id_proveedor: e.target.value})}
+                      required>
+                      <option value="">Seleccionar proveedor</option>
+                      {proveedores.map(prov => (
+                        <option key={prov.id} value={prov.id}>{prov.nombre}</option>
+                      ))}
+                    </select>
                   </div>
-
-                  <div className="d-flex justify-content-end">
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary me-2"
-                      onClick={() => setShowModal(false)}
-                    >
+                  <div className="d-flex justify-content-end gap-2">
+                    <button type="button" className="btn btn-secondary" 
+                      onClick={() => {
+                        setShowModal(false);
+                        setProductoEdit(null);
+                        setFormData({ nombre: "", precio: "", stock: "", id_categoria: "", id_proveedor: "" });
+                      }}>
                       Cancelar
                     </button>
                     <button type="submit" className="btn btn-success">
-                      Guardar
+                      {productoEdit ? 'Actualizar' : 'Crear'} Producto
                     </button>
                   </div>
                 </form>

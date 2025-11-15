@@ -1,19 +1,39 @@
-import axios from "axios";
+// services/api.js - VERSIÓN CORREGIDA
+import axios from 'axios';
 
-const API_URL = "http://127.0.0.1:8000"; // Tu backend Django local
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
-// Crear instancia base de Axios
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Interceptor: si hay token, lo agrega a los headers
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Interceptor para agregar token automáticamente
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Interceptor para manejar errores de autenticación
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

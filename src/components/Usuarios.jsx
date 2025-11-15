@@ -1,215 +1,366 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { UserPlus, Users, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "bootstrap/dist/css/bootstrap.min.css";
+import api from "../services/api";
+import {
+  Users,
+  UserPlus,
+  Edit,
+  Trash2,
+  ArrowLeft,
+  Download,
+} from "lucide-react";
 
 export default function Usuarios() {
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [empleados, setEmpleados] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [nuevoUsuario, setNuevoUsuario] = useState({
-    username: "",
-    email: "",
-    password: "",
-    rol: "",
+  const [tipoUsuario, setTipoUsuario] = useState("cliente");
+  const [formData, setFormData] = useState({
+    nombre: "",
+    correo: "",
+    telefono: "",
+    usuario: {
+      username: "",
+      password: "",
+    },
   });
 
-  const navigate = useNavigate();
-
   useEffect(() => {
-    const fetchUsuarios = async () => {
-      try {
-        const token = localStorage.getItem("access");
-        const response = await axios.get("http://127.0.0.1:8000/api/usuarios/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsuarios(response.data);
-      } catch (error) {
-        console.error("Error al obtener usuarios:", error);
-      }
-    };
-    fetchUsuarios();
+    cargarUsuarios();
   }, []);
 
-  const handleAddUser = async (e) => {
+  const cargarUsuarios = async () => {
+    try {
+      const [clientesRes, empleadosRes] = await Promise.all([
+        api.get("/farmacia/clientes/"),
+        api.get("/farmacia/empleados/"),
+      ]);
+
+      setClientes(clientesRes.data);
+      setEmpleados(empleadosRes.data);
+      setUsuarios([...clientesRes.data, ...empleadosRes.data]);
+    } catch (error) {
+      console.error("Error cargando usuarios:", error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("access");
-      await axios.post("http://127.0.0.1:8000/api/usuarios/", nuevoUsuario, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      alert("✅ Usuario agregado correctamente");
+      if (tipoUsuario === "cliente") {
+        await api.post("/farmacia/clientes/", formData);
+        alert("✅ Cliente creado exitosamente");
+      } else {
+        await api.post("/farmacia/empleados/", formData);
+        alert("✅ Empleado creado exitosamente");
+      }
+
       setShowModal(false);
-      setNuevoUsuario({ username: "", email: "", password: "", rol: "" });
-      window.location.reload();
+      setFormData({
+        nombre: "",
+        correo: "",
+        telefono: "",
+        usuario: { username: "", password: "" },
+      });
+      cargarUsuarios();
     } catch (error) {
-      console.error("Error al agregar usuario:", error);
-      alert("❌ No se pudo agregar el usuario.");
+      console.error("Error creando usuario:", error);
+      alert("❌ Error al crear el usuario");
+    }
+  };
+
+  const handleDelete = async (id, tipo) => {
+    if (window.confirm("¿Estás seguro de eliminar este usuario?")) {
+      try {
+        if (tipo === "cliente") {
+          await api.delete(`/farmacia/clientes/${id}/`);
+        } else {
+          await api.delete(`/farmacia/empleados/${id}/`);
+        }
+        alert("✅ Usuario eliminado");
+        cargarUsuarios();
+      } catch (error) {
+        console.error("❌ Error eliminando usuario:", error);
+      }
     }
   };
 
   return (
-    <div className="container py-5">
-      {/* Botón Volver */}
-      <div className="mb-3">
-        <button
-          className="btn btn-outline-success d-flex align-items-center"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="me-2" size={18} />
-          Volver
-        </button>
-      </div>
-
-      {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-success d-flex align-items-center">
-          <Users className="me-2" size={30} />
-          Gestión de Usuarios
-        </h2>
-        <button
-          className="btn btn-success d-flex align-items-center"
-          onClick={() => setShowModal(true)}
-        >
-          <UserPlus className="me-2" size={18} />
-          Agregar Usuario
-        </button>
-      </div>
-
-      <p className="text-muted mb-4">
-        Desde aquí puedes visualizar, agregar, editar y eliminar los usuarios del sistema.
-      </p>
-
-      {/* Tabla */}
-      <div className="card shadow-sm border-0">
-        <div className="card-body">
-          <table className="table table-hover align-middle">
-            <thead className="table-success">
-              <tr>
-                <th>ID</th>
-                <th>Usuario</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th className="text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.length > 0 ? (
-                usuarios.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.id}</td>
-                    <td>{u.username}</td>
-                    <td>{u.email}</td>
-                    <td>{u.rol?.name || "Sin rol"}</td>
-                    <td className="text-center">
-                      <button className="btn btn-outline-primary btn-sm me-2">
-                        Editar
-                      </button>
-                      <button className="btn btn-outline-danger btn-sm">
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" className="text-center text-muted py-4">
-                    No hay usuarios registrados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div
+      className="d-flex justify-content-center align-items-center min-vh-100 py-5"
+      style={{ background: "linear-gradient(135deg, #d0f0c0, #b2dfdb)" }}
+    >
+      <div className="container" style={{ maxWidth: "1200px" }}>
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-outline-success"
+          >
+            <ArrowLeft size={18} /> Volver
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn btn-success"
+          >
+            <UserPlus size={18} /> Nuevo Usuario
+          </button>
         </div>
-      </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog">
-            <div className="modal-content border-0 shadow-lg">
-              <div className="modal-header bg-success text-white">
-                <h5 className="modal-title">Agregar Nuevo Usuario</h5>
+        {/* Tabs para Clientes y Empleados */}
+        <div className="card shadow-lg border-0 rounded-4">
+          <div className="card-header bg-success text-white">
+            <h4 className="mb-0 d-flex align-items-center">
+              <Users className="me-2" /> Gestión de Usuarios
+            </h4>
+          </div>
+
+          <div className="card-body">
+            <ul className="nav nav-tabs mb-4">
+              <li className="nav-item">
                 <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <form onSubmit={handleAddUser}>
-                  <div className="mb-3">
-                    <label className="form-label">Nombre de usuario</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={nuevoUsuario.username}
-                      onChange={(e) =>
-                        setNuevoUsuario({ ...nuevoUsuario, username: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Correo electrónico</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      value={nuevoUsuario.email}
-                      onChange={(e) =>
-                        setNuevoUsuario({ ...nuevoUsuario, email: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Contraseña</label>
-                    <input
-                      type="password"
-                      className="form-control"
-                      value={nuevoUsuario.password}
-                      onChange={(e) =>
-                        setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Rol</label>
-                    <select
-                      className="form-select"
-                      value={nuevoUsuario.rol}
-                      onChange={(e) =>
-                        setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })
-                      }
-                      required
-                    >
-                      <option value="">Selecciona un rol</option>
-                      <option value="Administrador">Administrador</option>
-                      <option value="Empleado">Empleado</option>
-                    </select>
-                  </div>
-                  <div className="d-flex justify-content-end">
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary me-2"
-                      onClick={() => setShowModal(false)}
-                    >
-                      Cancelar
-                    </button>
-                    <button type="submit" className="btn btn-success">
-                      Guardar
-                    </button>
-                  </div>
-                </form>
-              </div>
+                  className="nav-link active"
+                  data-bs-toggle="tab"
+                  onClick={() => setUsuarios([...clientes, ...empleados])}
+                >
+                  Todos los Usuarios
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className="nav-link"
+                  data-bs-toggle="tab"
+                  onClick={() => setUsuarios(clientes)}
+                >
+                  Clientes ({clientes.length})
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className="nav-link"
+                  data-bs-toggle="tab"
+                  onClick={() => setUsuarios(empleados)}
+                >
+                  Empleados ({empleados.length})
+                </button>
+              </li>
+            </ul>
+
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead className="table-success">
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Usuario</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map((user) => (
+                    <tr key={user.id}>
+                      <td>
+                        <span
+                          className={`badge ${
+                            user.correo ? "bg-info" : "bg-warning"
+                          }`}
+                        >
+                          {user.correo ? "Cliente" : "Empleado"}
+                        </span>
+                      </td>
+                      <td className="fw-bold">{user.nombre}</td>
+                      <td>{user.correo || "N/A"}</td>
+                      <td>{user.telefono}</td>
+                      <td>
+                        <span className="fw-bold text-primary">
+                          {user.usuario?.username || "N/A"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <button className="btn btn-outline-primary btn-sm">
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDelete(
+                                user.id,
+                                user.correo ? "cliente" : "empleado"
+                              )
+                            }
+                            className="btn btn-outline-danger btn-sm"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Modal para crear usuario */}
+        {showModal && (
+          <div
+            className="modal fade show d-block"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header bg-success text-white">
+                  <h5 className="modal-title">Crear Nuevo Usuario</h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setShowModal(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                      <label className="form-label">Tipo de Usuario</label>
+                      <select
+                        className="form-select"
+                        value={tipoUsuario}
+                        onChange={(e) => setTipoUsuario(e.target.value)}
+                      >
+                        <option value="cliente">Cliente</option>
+                        <option value="empleado">Empleado</option>
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Nombre Completo</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.nombre}
+                        onChange={(e) =>
+                          setFormData({ ...formData, nombre: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+
+                    {tipoUsuario === "cliente" && (
+                      <>
+                        <div className="mb-3">
+                          <label className="form-label">
+                            Correo Electrónico
+                          </label>
+                          <input
+                            type="email"
+                            className="form-control"
+                            value={formData.correo}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                correo: e.target.value,
+                              })
+                            }
+                            required
+                          />
+                        </div>
+                        <div className="mb-3">
+                          <label className="form-label">Teléfono</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={formData.telefono}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                telefono: e.target.value,
+                              })
+                            }
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {tipoUsuario === "empleado" && (
+                      <div className="mb-3">
+                        <label className="form-label">Teléfono</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.telefono}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              telefono: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <label className="form-label">Nombre de Usuario</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.usuario.username}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            usuario: {
+                              ...formData.usuario,
+                              username: e.target.value,
+                            },
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Contraseña</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        value={formData.usuario.password}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            usuario: {
+                              ...formData.usuario,
+                              password: e.target.value,
+                            },
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="d-flex justify-content-end gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setShowModal(false)}
+                      >
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn btn-success">
+                        Crear Usuario
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
