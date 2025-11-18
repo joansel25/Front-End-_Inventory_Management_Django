@@ -1,4 +1,4 @@
-// main.jsx - VERSIÓN COMPLETAMENTE CORREGIDA
+// main.jsx - CON EXPORT DEFAULT
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -12,7 +12,6 @@ import EmpleadoDashboard from "./components/EmpleadoDashboard";
 import RegistrarSalida from "./components/RegistrarSalida";
 import ConsultarProductos from "./components/ConsultarProducto";
 import MisVentas from "./components/MisVentas";
-import Productos from "./components/Productos";
 import Movimientos from "./components/Movimientos";
 import ClienteDashboard from "./components/ClienteDashboard";
 import MisCompras from "./components/MisCompras";
@@ -20,12 +19,15 @@ import PerfilCliente from "./components/PerfilCliente";
 import Usuarios from "./components/Usuarios";
 import Reportes from "./components/Reporte";
 import RegistrarVenta from "./components/RegistrarVenta";
+import Productos from "./components/Productos";   
+import Gmovimientos from "./components/GestionMovimiento"
 
-// PrivateRoute corregido
+// PrivateRoute
 import PrivateRoute from "./router/PrivateRoute";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
+// ✅ APP PRINCIPAL ÚNICA - CON EXPORT DEFAULT
+function App() {
+  return (
     <BrowserRouter>
       <Routes>
         {/* Rutas Públicas */}
@@ -42,11 +44,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             </PrivateRoute>
           }
         />
+
         <Route
-          path="/admin/dashboard"
+          path="/admin"
           element={
             <PrivateRoute rolPermitido="administrador">
-              <AdminDashboard />
+              <Gmovimientos />
             </PrivateRoute>
           }
         />
@@ -76,22 +79,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             </PrivateRoute>
           }
         />
+
         <Route
-          path="/empleado/dashboard"
+          path="/empleado"
           element={
             <PrivateRoute rolPermitido="empleado">
-              <EmpleadoDashboard />
+              <Movimientos />
             </PrivateRoute>
           }
         />
         <Route
-          path="/empleado/registrar-venta"
+          path="/registrar-venta"
           element={
             <PrivateRoute rolPermitido="empleado">
               <RegistrarVenta />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/empleado/registrar-salida"
           element={
@@ -109,7 +114,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
         <Route
-          path="/empleado/mis-ventas"
+          path="/empleado/movimientos"
+          element={
+            <PrivateRoute rolPermitido="empleado">
+              <Movimientos />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/mis-ventas"
           element={
             <PrivateRoute rolPermitido="empleado">
               <MisVentas />
@@ -120,14 +133,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         {/* === CLIENTE === */}
         <Route
           path="/cliente"
-          element={
-            <PrivateRoute rolPermitido="cliente">
-              <ClienteDashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/cliente/dashboard"
           element={
             <PrivateRoute rolPermitido="cliente">
               <ClienteDashboard />
@@ -151,27 +156,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* === RUTAS COMPARTIDAS === */}
-        <Route
-          path="/movimientos"
-          element={
-            <PrivateRoute rolPermitido={["administrador", "empleado"]}>
-              <Movimientos />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/productos"
-          element={
-            <PrivateRoute rolPermitido={["administrador", "empleado"]}>
-              <Productos />
-            </PrivateRoute>
-          }
-        />
-
-        {/* Ruta por defecto para páginas no encontradas */}
+        {/* Ruta por defecto */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+// ✅ EXPORT DEFAULT PARA FAST REFRESH
+export default App;
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <React.StrictMode>
+    <App />
   </React.StrictMode>
 );

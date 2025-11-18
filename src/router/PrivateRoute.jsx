@@ -1,90 +1,82 @@
-// router/PrivateRoute.jsx - VERSIÓN CORREGIDA
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+// router/PrivateRoute.jsx - VERSIÓN MEJORADA CON REDIRECCIÓN FORZADA
+import { Navigate } from "react-router-dom";
 
 const PrivateRoute = ({ children, rolPermitido }) => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [accesoPermitido, setAccesoPermitido] = useState(false);
+  const token = localStorage.getItem("access");
+  const rol = localStorage.getItem("rol")?.toLowerCase()?.trim();
 
-  useEffect(() => {
-    const verificarAcceso = async () => {
-      try {
-        const token = localStorage.getItem("access");
-        
-        if (!token) {
-          navigate("/login");
-          return;
-        }
+  console.log("🔐 PrivateRoute - Verificación detallada:", {
+    token: !!token,
+    rolUsuario: `"${rol}"`,
+    rolRequerido: rolPermitido,
+    pathActual: window.location.pathname
+  });
 
-        // Verificar si el token es válido
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const exp = payload.exp * 1000;
-        
-        if (Date.now() >= exp) {
-          localStorage.clear();
-          navigate("/login");
-          return;
-        }
-
-        const rol = localStorage.getItem("rol")?.toLowerCase();
-        
-        if (!rol) {
-          navigate("/login");
-          return;
-        }
-
-        // Verificar acceso para array o string
-        let tieneAcceso = false;
-        
-        if (Array.isArray(rolPermitido)) {
-          tieneAcceso = rolPermitido.some(r => r.toLowerCase() === rol);
-        } else {
-          tieneAcceso = rol === rolPermitido.toLowerCase();
-        }
-
-        if (!tieneAcceso) {
-          // Redirigir al dashboard según el rol
-          switch(rol) {
-            case "administrador":
-              navigate("/admin");
-              break;
-            case "empleado":
-              navigate("/empleado");
-              break;
-            case "cliente":
-              navigate("/cliente");
-              break;
-            default:
-              navigate("/login");
-          }
-          return;
-        }
-
-        setAccesoPermitido(true);
-      } catch (error) {
-        console.error("Error verificando acceso:", error);
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    verificarAcceso();
-  }, [navigate, rolPermitido]);
-
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center vh-100"
-           style={{ background: "linear-gradient(135deg, #d0f0c0, #b2dfdb)" }}>
-        <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Verificando acceso...</span>
-        </div>
-      </div>
-    );
+  // Si no hay token, redirigir a login
+  if (!token) {
+    console.log("❌ No hay token, redirigiendo a login");
+    return <Navigate to="/login" replace />;
   }
 
-  return accesoPermitido ? children : null;
+  // Verificar expiración del token
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp * 1000;
+    
+    if (Date.now() >= exp) {
+      console.log("❌ Token expirado");
+      localStorage.clear();
+      return <Navigate to="/login" replace />;
+    }
+  } catch (error) {
+    console.error("Error verificando token:", error);
+    localStorage.clear();
+    return <Navigate to="/login" replace />;
+  }
+
+  // Si no hay rol, redirigir a login
+  if (!rol) {
+    console.log("❌ No hay rol definido en localStorage");
+    localStorage.clear();
+    return <Navigate to="/login" replace />;
+  }
+
+  // Convertir rolPermitido a array para facilitar la verificación
+  const rolesPermitidos = Array.isArray(rolPermitido) 
+    ? rolPermitido 
+    : [rolPermitido];
+  
+  // Verificar si el rol del usuario está permitido
+  const tienePermiso = rolesPermitidos.some(r => r.toLowerCase() === rol);
+  
+  console.log("📊 Resultado verificación de permisos:", {
+    rolesPermitidos,
+    rolUsuario: rol,
+    tienePermiso
+  });
+
+  if (!tienePermiso) {
+    console.log("🚫 Acceso denegado - Redirigiendo según rol del usuario");
+    
+    // FORZAR REDIRECCIÓN SEGÚN ROL - ESTO ES CLAVE
+    if (rol === "administrador") {
+      console.log("🔄 FORZANDO redirección de administrador a /admin");
+      return <Navigate to="/admin" replace />;
+    } else if (rol === "empleado") {
+      console.log("🔄 FORZANDO redirección de empleado a /empleado");
+      return <Navigate to="/empleado" replace />;
+    } else if (rol === "cliente") {
+      console.log("🔄 FORZANDO redirección de cliente a /cliente");
+      return <Navigate to="/cliente" replace />;
+    } else {
+      console.log("🔄 Rol desconocido, redirigiendo a login");
+      localStorage.clear();
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  console.log("✅ Acceso permitido a:", window.location.pathname);
+  return children;
 };
 
 export default PrivateRoute;
